@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.emojigrid.ui.theme.EmojiGridTheme
@@ -33,7 +34,7 @@ val colors = (0..7).map { getRandomColor() }
 
 //    val data = emojis zip colors
 //    val board = (data + data).shuffled()
-val fontSize = 42
+const val fontSize = 42
 val board = ((0 until emojis.size) + (0 until emojis.size)).shuffled()
 
 class MainActivity : ComponentActivity() {
@@ -46,8 +47,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-//                    Greeting("Android")
-                    MyPreview(emojis)
+                    GameBoard()
                 }
             }
         }
@@ -62,41 +62,56 @@ fun getRandomColor() = Color(
 // also Color.LightGray and so on
 
 
-// https://alexzh.com/jetpack-compose-building-grids/
-//@Preview(showBackground = true)
 @Composable
-fun MyPreview(emojis: MutableList<String>) {
+fun CardText(text: String) {
+    Text(
+        text = text,
+        fontSize = fontSize.sp,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = (fontSize * 0.8).dp)
+    )
+}
 
+@Composable
+fun CardBox(slot: Int, content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .padding(4.dp)
+            // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
+            .clip(shape = RoundedCornerShape(10.dp))
+            .background(color = if (emojis[board[slot]] in found) Color.White else colors[board[slot]])
+            .clickable {
+                if (emojis[board[slot]] !in found) {
+                    Log.println(Log.INFO, "Emoji", "CLICKED")
+                    Log.println(Log.INFO, "Emoji", found.toString())
+                    found.add(emojis[board[slot]])
+                    Log.println(Log.INFO, "Emoji", found.toString())
+//                        Log.d(TAG, "focusRequester.requestFocus()")
+                }
+            }
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun GameCard(slot: Int) {
+    CardBox(slot) { CardText(text = emojis[board[slot]]) }
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun GameBoard() {
+    // https://alexzh.com/jetpack-compose-building-grids/
     LazyVerticalGrid(
-        columns = GridCells.Fixed(4),
+        columns = GridCells.Fixed(count = 4),
         contentPadding = PaddingValues(8.dp),
     ) {
-        items(board.size) { item ->
-            Box(
-                modifier = Modifier
-                    .padding(4.dp)
-                    // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
-                    .clip(shape = RoundedCornerShape(10.dp))
-                    .background(color = if (emojis[board[item]] in found) Color.White else colors[board[item]])
-                    .clickable {
-                        if (emojis[board[item]] !in found) {
-                            Log.println(Log.INFO, "Emoji", "CLICKED")
-                            Log.println(Log.INFO, "Emoji", found.toString())
-                            found.add(emojis[board[item]])
-                            Log.println(Log.INFO, "Emoji", found.toString())
-//                        Log.d(TAG, "focusRequester.requestFocus()")
-                        }
-                    }
-            ) {
-                Text(
-                    text = emojis[board[item]],
-                    fontSize = fontSize.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = (fontSize * 0.8).dp)
-                )
-            }
+        items(board.size) {
+            GameCard(it)
         }
     }
 }
