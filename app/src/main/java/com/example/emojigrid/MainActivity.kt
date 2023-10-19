@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.example.emojigrid.ui.theme.EmojiGridTheme
 import kotlin.random.Random
 
-val emojis = mutableListOf("☕️", "🙂", "🥛", "🎉", "📐", "🎯", "🧩", "🥑")
+val emojis = mutableListOf("🐷️", "🙂", "🥛", "🎉", "🌈", "🎯", "🧩", "🐳")
 val found = mutableListOf("")
 val colors = (0..7).map { getRandomColor() }
 
@@ -80,7 +81,7 @@ fun CardBox(slot: Int, content: @Composable () -> Unit) {
         modifier = Modifier
             .padding(4.dp)
             // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
-            .clip(shape = RoundedCornerShape(10.dp))
+            .clip(shape = RoundedCornerShape(27.dp))
             .background(color = if (emojis[board[slot]] in found) Color.White else colors[board[slot]])
             .clickable {
                 if (emojis[board[slot]] !in found) {
