@@ -8,13 +8,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,37 +24,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.emojigrid.ui.theme.EmojiGridTheme
 import kotlin.random.Random
 
-val emojis = mutableListOf("🐷️", "🙂", "🥛", "🎉", "🌈", "🎯", "🧩", "🐳")
-val found = mutableListOf("")
+val emojis = listOf("🐷", "🙂", "🥛", "🎉", "🌈", "🎯", "🧩", "🐳")
+
+//val emojis = "🐷🙂🥛🎉🌈🎯🧩🐳".toList()
+var found = mutableListOf("")
 val colors = (0..7).map { getRandomColor() }
 
-//    val data = emojis zip colors
-//    val board = (data + data).shuffled()
+//val data = emojis zip colors
+//val board = (data + data).shuffled()
 const val fontSize = 42
-val board = ((0 until emojis.size) + (0 until emojis.size)).shuffled()
+val slots = ((0 until emojis.size) + (0 until emojis.size)).shuffled()
 
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            EmojiGridTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    GameBoard()
-                }
-            }
-        }
-    }
-}
 
 fun getRandomColor() = Color(
     red = Random.nextInt(0, 255),
@@ -62,60 +48,95 @@ fun getRandomColor() = Color(
 )
 // also Color.LightGray and so on
 
+enum class CardState {
+    FACE_DOWN, FACE_UP, MATCHED
+}
 
-@Composable
-fun CardText(text: String) {
-    Text(
-        text = text,
-        fontSize = fontSize.sp,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = (fontSize * 0.8).dp)
-    )
+class GameCard(var emoji: String, var color: Color, var state: CardState = CardState.FACE_DOWN) {
+//    override fun toString() = "$emoji $color $state"
+
+    fun clicked() {
+        Log.d("XXX", "Clicked in $emoji")
+        color = Color.Yellow
+        emoji = "✅"
+        Log.d("XXX", "${this.emoji}")
+//        Log.d("XXX", this.toString())
+    }
+}
+
+var board = slots.map {
+    GameCard(emoji = emojis[it], color = colors[it])
+}
+
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+//        Log.d("X", cards.toString())
+        setContent {
+            EmojiGridTheme {
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    GameBoard(board)
+                    Row() {
+                        Button() {
+                            Text("Foo")
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
-fun CardBox(slot: Int, content: @Composable () -> Unit) {
+fun GameCardCompose(card: GameCard, emoji: String, color: Color) {
     Box(
         modifier = Modifier
             .padding(4.dp)
             // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
             .clip(shape = RoundedCornerShape(27.dp))
-            .background(color = if (emojis[board[slot]] in found) Color.White else colors[board[slot]])
-            .clickable {
-                if (emojis[board[slot]] !in found) {
-                    Log.println(Log.INFO, "Emoji", "CLICKED")
-                    Log.println(Log.INFO, "Emoji", found.toString())
-                    found.add(emojis[board[slot]])
-                    Log.println(Log.INFO, "Emoji", found.toString())
-//                        Log.d(TAG, "focusRequester.requestFocus()")
-                }
-            }
+            .background(color)
+            .clickable { card.clicked() }
+
     ) {
-        content()
+        Text(
+            text = emoji,
+            fontSize = fontSize.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = (fontSize * 0.8).dp)
+        )
     }
 }
 
-@Composable
-fun GameCard(slot: Int) {
-    CardBox(slot) { CardText(text = emojis[board[slot]]) }
-}
 
+//https://developer.android.com/jetpack/compose/mental-model
+//private fun NamePickerItem(name: String, onClicked: (String) -> Unit) {
+//    Text(name, Modifier.clickable(onClick = { onClicked(name) }))
+//}
 
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
-fun GameBoard() {
+fun GameBoard(board: List<GameCard>) {
+    var x = GameCard("X", Color.Yellow)
+    x.clicked()
+    Log.d("XXX-", x.emoji)
     // https://alexzh.com/jetpack-compose-building-grids/
     LazyVerticalGrid(
         columns = GridCells.Fixed(count = 4),
         contentPadding = PaddingValues(8.dp),
     ) {
         items(board.size) {
-            GameCard(it)
+            GameCardCompose(board[it], board[it].emoji, board[it].color)
         }
     }
 }
+
 
 //            Card(
 //                modifier = Modifier
