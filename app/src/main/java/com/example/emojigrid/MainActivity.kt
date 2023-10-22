@@ -99,17 +99,20 @@ fun GameBoard(game: GameEngine) {
                         .padding(4.dp)
                         // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
                         .clip(shape = RoundedCornerShape(27.dp))
-                        .background(if (card.isMatched) Color.White else card.color)
-                        .clickable {
-                            if (!card.isMatched) {
-                                card.turn()
-                                game.process()
-                                boardRedrawCount += 1
+                        .background(
+                            color = when {
+                                card.isMatched -> MaterialTheme.colorScheme.background
+                                card.isFaceUp -> card.color
+                                else -> MaterialTheme.colorScheme.primary
                             }
+                        )
+                        .clickable {
+                            game.clicked(card)
+                            boardRedrawCount += 1
                         }
                 ) {
                     Text(
-                        text = card.emoji,
+                        text = if (card.isFaceUp) card.emoji else "",
                         // I just need to use boardRedrawCount "somehow" to force a redraw
                         // The following use is a no-op
                         fontSize = ((boardRedrawCount * 0) + fontSize).sp,
@@ -119,7 +122,6 @@ fun GameBoard(game: GameEngine) {
                             .padding(vertical = (fontSize * 0.8).dp)
                     )
                 }
-
             }
         }
     }
@@ -175,7 +177,7 @@ val game = GameEngine(emojis, colors, shuffle = true, verbose = true)
 //-----------------------------------------------
 // Game engine
 
-enum class GameState { FIRST, SECOND, END }
+enum class GameState { MOVE1, MOVE2, MOVE3, END }
 
 class GameEngine(
     val emojis: List<String>,
@@ -187,7 +189,7 @@ class GameEngine(
     val board = slots.indices.map {
         GameCard(emoji = emojis[slots[it]], color = colors[slots[it]])
     }
-    var state = GameState.FIRST
+    var state = GameState.MOVE1
 
     override fun toString(): String {
         return board.indices.map { "$it${board[it]}" }.joinToString(separator = " ")
@@ -195,8 +197,9 @@ class GameEngine(
 
     fun nextState() {
         state = when (state) {
-            GameState.FIRST -> GameState.SECOND
-            GameState.SECOND -> GameState.FIRST
+            GameState.MOVE1 -> GameState.MOVE2
+            GameState.MOVE2 -> GameState.MOVE3
+            GameState.MOVE3 -> GameState.MOVE1
             else -> state
         }
     }
@@ -210,26 +213,36 @@ class GameEngine(
         }
     }
 
-    fun process() {
-        if (state == GameState.SECOND) {
-            val faceUp = board.filter { it.isFaceUp && !it.isMatched }
-            if (faceUp.size == 2 && faceUp.first().emoji == faceUp.last().emoji) {
-                faceUp.map { it.isMatched = true }
-                if (verbose) {
-                    println(this)
-                }
-                maybeVictory()
-            } else {
-                if (verbose) {
-                    println(this)
-                }
-                faceUp.map { it.turn() }
-            }
-        } else {
-            if (verbose) {
-                println(this)
-            }
+    fun pendingCards(): List<GameCard> {
+        return board.filter { it.isFaceUp && !it.isMatched }
+    }
+
+    fun clicked(card: GameCard) {
+        when {
+            // Nothing to do
+            card.isMatched -> return
+            card.isFaceUp && state == GameState.MOVE1 -> return // no Undo
+            state == GameState.END -> return
+
+            // Turn cards
+            state == GameState.MOVE1 -> card.turn()
+            state == GameState.MOVE2 -> card.turn()
+            state == GameState.MOVE3 -> pendingCards().map { it.turn() }
         }
+
+        // Show board
+        if (verbose) {
+            println(this)
+        }
+
+        // Detect match
+        val faceUp = pendingCards()
+        if (state == GameState.MOVE2 && faceUp.first().emoji == faceUp.last().emoji) {
+            faceUp.map { it.isMatched = true }
+            nextState() // will skip step 3
+            maybeVictory()
+        }
+
         nextState()
     }
 }
@@ -241,7 +254,7 @@ class GameCard(
     var isMatched: Boolean = false,
 ) {
     override fun toString() =
-        "$emoji${if (isFaceUp) "⬆︎" else ""}${if (isMatched) "🆗" else ""}"
+        "$emoji${if (isMatched) "🆗" else if (isFaceUp) "⬆︎" else ""}"
 
     fun turn() {
         if (!isMatched) {
@@ -255,28 +268,26 @@ class GameCard(
 
 fun testZeroMatches() {
     val game = GameEngine(emojis.slice(0..3), colors.slice(0..3), shuffle = false)
-    val moves = listOf(0, 1, 2, 3)
+    val moves = listOf(0, 1, 7, 2, 3, 7)
 
-    moves.map {
-        game.board[it].turn()
-        game.process()
-    }
+    moves.map { game.clicked(card = game.board[it]) }
 
     assert(game.board.none { it.isMatched })
-    assert(game.state == GameState.FIRST)
+    assert(game.board.none { it.isFaceUp })
+    assert(game.state == GameState.MOVE1)
+    println("testZeroMatches passed")
+
 }
 
 fun testVictoryNonShuffled() {
     val game = GameEngine(emojis.slice(0..3), colors.slice(0..3), shuffle = false)
     val moves = listOf(0, 4, 1, 5, 2, 6, 3, 7)
 
-    moves.map {
-        game.board[it].turn()
-        game.process()
-    }
+    moves.map { game.clicked(card = game.board[it]) }
 
     assert(game.board.all { it.isMatched })
     assert(game.state == GameState.END)
+    println("testVictoryNonShuffled passed")
 }
 
 fun testVictoryShuffled() {
@@ -286,10 +297,8 @@ fun testVictoryShuffled() {
     // Use all possible moves, always win
     loop@ for (move1 in moves) {
         for (move2 in moves) {
-            game.board[move1].turn()
-            game.process()
-            game.board[move2].turn()
-            game.process()
+            game.clicked(card = game.board[move1])
+            game.clicked(card = game.board[move2])
             if (game.state == GameState.END) {
                 break@loop
             }
@@ -298,6 +307,7 @@ fun testVictoryShuffled() {
 
     assert(game.board.all { it.isMatched })
     assert(game.state == GameState.END)
+    println("testVictoryShuffled passed")
 }
 
 fun runTests() {
@@ -306,6 +316,15 @@ fun runTests() {
     testVictoryNonShuffled()
     println("Tests ended")
 }
+
+
+//fun main() {
+//    val game = GameEngine(emojis.slice(0..3), colors.slice(0..3), shuffle = false, verbose = true)
+//    val moves = listOf(0, 4, 1, 5, 2, 6, 3, 7)
+//    moves.map { game.clicked(card = game.board[it]) }
+//
+//    runTests()
+//}
 
 
 /** Reference:
