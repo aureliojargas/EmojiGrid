@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.example.emojigrid
 
 import android.os.Bundle
@@ -6,17 +8,23 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -25,12 +33,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.emojigrid.ui.theme.EmojiGridTheme
-
-// XXX TODO click handling
-//https://developer.android.com/jetpack/compose/mental-model
-//private fun NamePickerItem(name: String, onClicked: (String) -> Unit) {
-//    Text(name, Modifier.clickable(onClick = { onClicked(name) }))
-//}
 
 
 const val fontSize = 42
@@ -46,53 +48,79 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    GameBoard()
+                    GameBoard(game)
                 }
             }
         }
     }
 }
 
-@Composable
-fun GameCardCompose(card: GameCard, emoji: String, color: Color) {
-    Box(
-        modifier = Modifier
-            .padding(4.dp)
-            // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
-            .clip(shape = RoundedCornerShape(27.dp))
-            .background(color)
-            .clickable {
-                card.turn()
-                game.process()
-            }
-
-    ) {
-        Text(
-            text = emoji,
-            fontSize = fontSize.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = (fontSize * 0.8).dp)
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun GameBoardPreview() {
-    GameBoard()
+    GameBoard(game)
 }
 
 @Composable
-fun GameBoard() {
-    // https://alexzh.com/jetpack-compose-building-grids/
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(count = 4),
-        contentPadding = PaddingValues(8.dp),
+fun GameBoard(game: GameEngine) {
+
+    // Incremental variable to force the full board redraw at every click.
+    // It must be used as content or modifier for some Composable.
+    // https://developer.android.com/jetpack/compose/state
+    var boardRedrawCount by remember { mutableStateOf(0) }
+
+    // https://developer.android.com/jetpack/compose/components/scaffold
+    // The bottomBar (if any) may overlap content
+    // https://foso.github.io/Jetpack-Compose-Playground/material/scaffold/#tips
+    Scaffold(
+        topBar = {
+            TopAppBar(
+//                colors = TopAppBarDefaults.topAppBarColors(
+//                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+//                    titleContentColor = MaterialTheme.colorScheme.primary,
+//                ),
+                title = {
+                    Text("Clicks: $boardRedrawCount")
+                }
+
+            )
+        },
     ) {
-        items(game.board.size) {
-            GameCardCompose(game.board[it], game.board[it].emoji, game.board[it].color)
+
+        // https://alexzh.com/jetpack-compose-building-grids/
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(count = 4),
+            contentPadding = it, //PaddingValues(8.dp),
+        ) {
+            items(game.board.size) {
+                val card = game.board[it]
+                Box(
+                    modifier = Modifier
+                        .padding(4.dp)
+                        // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
+                        .clip(shape = RoundedCornerShape(27.dp))
+                        .background(if (card.isMatched) Color.White else card.color)
+                        .clickable {
+                            if (!card.isMatched) {
+                                card.turn()
+                                game.process()
+                                boardRedrawCount += 1
+                            }
+                        }
+                ) {
+                    Text(
+                        text = card.emoji,
+                        // I just need to use boardRedrawCount "somehow" to force a redraw
+                        // The following use is a no-op
+                        fontSize = ((boardRedrawCount * 0) + fontSize).sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = (fontSize * 0.8).dp)
+                    )
+                }
+
+            }
         }
     }
 }
@@ -142,7 +170,7 @@ val colors = listOf(
     Color.Gray,
     Color.LightGray,
 )
-val game = GameEngine(emojis, colors, shuffle = false, verbose = true)
+val game = GameEngine(emojis, colors, shuffle = true, verbose = true)
 
 //-----------------------------------------------
 // Game engine
@@ -278,3 +306,22 @@ fun runTests() {
     testVictoryNonShuffled()
     println("Tests ended")
 }
+
+
+/** Reference:
+ * Modifier combination and how it is applied:
+ * https://www.youtube.com/watch?v=iEk3ySILgwk&list=PLWz5rJ2EKKc94tpHND8pW8Qt8ZfT1a4cq&index=10
+ * https://developer.android.com/jetpack/compose/layouts/constraints-modifiers
+ *
+ * List of modifiers:
+ * https://developer.android.com/jetpack/compose/modifiers-list
+ *
+ * ## Kotlin
+ *
+ * Similar to Python's @property (in Kotlin, the "by" keyword)
+ * https://kotlinlang.org/docs/delegated-properties.html#standard-delegates
+ *
+ * Similar to Python's @functools.lru_cache()
+ * https://kotlinlang.org/docs/delegated-properties.html#lazy-properties
+ *
+ */
