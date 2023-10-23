@@ -162,7 +162,7 @@ fun GameBoard(game: GameEngine) {
 //-----------------------------------------------
 // Data
 
-val emojis = listOf("🐷", "🙂", "🥛", "🎉", "🌈", "🎯", "🧩", "🐳")
+val emojis = listOf("🥛", "🙂", "🔥", "❤️", "🐷", "🐳", "🚀", "🌈")
 val colors = listOf(
     Color.Red,
     Color.Green,
@@ -170,8 +170,8 @@ val colors = listOf(
     Color.Cyan,
     Color.Magenta,
     Color.Yellow,
-    Color.Gray,
     Color.LightGray,
+    Color.Gray,
 )
 val game = GameEngine(emojis, colors, shuffle = true, verbose = true, debug = true)
 
