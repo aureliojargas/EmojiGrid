@@ -103,6 +103,7 @@ fun GameBoard(game: GameEngine) {
                             color = when {
                                 card.isMatched -> MaterialTheme.colorScheme.background
                                 card.isFaceUp -> card.color
+                                game.debug -> card.color
                                 else -> MaterialTheme.colorScheme.primary
                             }
                         )
@@ -112,7 +113,7 @@ fun GameBoard(game: GameEngine) {
                         }
                 ) {
                     Text(
-                        text = if (card.isFaceUp) card.emoji else "",
+                        text = if (card.isFaceUp or game.debug) card.emoji else "",
                         // I just need to use boardRedrawCount "somehow" to force a redraw
                         // The following use is a no-op
                         fontSize = ((boardRedrawCount * 0) + fontSize).sp,
@@ -172,7 +173,7 @@ val colors = listOf(
     Color.Gray,
     Color.LightGray,
 )
-val game = GameEngine(emojis, colors, shuffle = true, verbose = true)
+val game = GameEngine(emojis, colors, shuffle = true, verbose = true, debug = true)
 
 //-----------------------------------------------
 // Game engine
@@ -184,6 +185,7 @@ class GameEngine(
     val colors: List<Color>,
     val shuffle: Boolean = true,
     val verbose: Boolean = false,
+    val debug: Boolean = true,
 ) {
     val slots = (emojis.indices + emojis.indices).let { if (shuffle) it.shuffled() else it }
     val board = slots.indices.map {
