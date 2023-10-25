@@ -10,7 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -36,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -76,6 +77,7 @@ fun GameBoard(game: GameEngine) {
     // It must be used as content or modifier for some Composable.
     // https://developer.android.com/jetpack/compose/state
     var boardRedrawCount by remember { mutableStateOf(0) }
+    var clickCount by remember { mutableStateOf(0) }
 
     // https://developer.android.com/jetpack/compose/components/scaffold
     // The bottomBar (if any) may overlap content
@@ -88,7 +90,16 @@ fun GameBoard(game: GameEngine) {
                     titleContentColor = MaterialTheme.colorScheme.primary,
                 ),
                 title = {
-                    Text("Clicks: $boardRedrawCount")
+                    Text(
+                        text = "Viradas: $clickCount"
+                    )
+                    Text(
+                        text = if (game.debug) game.state.toString() else "",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(end = 10.dp),
+                        textAlign = TextAlign.Right,
+                    )
                 }
 
             )
@@ -100,19 +111,18 @@ fun GameBoard(game: GameEngine) {
             ) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Button(onClick = { boardRedrawCount++ }, modifier = Modifier.width(150.dp)) {
+                    Button(
+                        onClick = {
+                            game.resetBoard()
+                            clickCount = 0
+                            boardRedrawCount++
+                        },
+                        modifier = Modifier.width(150.dp),
+                    ) {
                         Text(
                             text = "Misturar",
-                            textAlign = TextAlign.Center,
-                            fontSize = 22.sp,
-                        )
-                    }
-                    Button(onClick = { boardRedrawCount++ }, modifier = Modifier.width(150.dp)) {
-                        Text(
-                            text = "Começar",
                             textAlign = TextAlign.Center,
                             fontSize = 22.sp,
                         )
@@ -121,69 +131,73 @@ fun GameBoard(game: GameEngine) {
             }
         },
     ) { innerPadding ->
-
-        // https://alexzh.com/jetpack-compose-building-grids/
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(count = 4),
-            contentPadding = innerPadding, //PaddingValues(8.dp),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentAlignment = Alignment.Center
         ) {
-            items(game.board.size) {
-                val card = game.board[it]
-                Box(
-                    modifier = Modifier
-                        .padding(4.dp)
-                        // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
-                        .clip(shape = RoundedCornerShape(27.dp))
-                        .background(
-                            color = when {
-                                card.isMatched -> MaterialTheme.colorScheme.background
-                                card.isFaceUp -> card.color
-                                game.debug -> card.color
-                                else -> MaterialTheme.colorScheme.primary
-                            }
-                        )
-                        .clickable {
-                            game.clicked(card)
-                            boardRedrawCount++
-                        }
-                ) {
-                    Text(
-                        text = if (card.isFaceUp or game.debug) card.emoji else "",
-                        // I just need to use boardRedrawCount "somehow" to force a redraw
-                        // The following use is a no-op
-                        fontSize = ((boardRedrawCount * 0) + fontSize).sp,
-                        textAlign = TextAlign.Center,
+            // https://alexzh.com/jetpack-compose-building-grids/
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(count = 4),
+            ) {
+                items(game.board.size) {
+                    val card = game.board[it]
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = (fontSize * 0.8).dp)
-                    )
+                            .padding(4.dp)
+                            // https://foso.github.io/Jetpack-Compose-Playground/foundation/shape/
+                            .clip(shape = RoundedCornerShape(27.dp))
+                            .background(
+                                color = when {
+                                    game.state == GameState.START -> card.color
+                                    card.isMatched -> MaterialTheme.colorScheme.background
+                                    card.isFaceUp -> card.color
+                                    game.debug -> card.color
+                                    else -> MaterialTheme.colorScheme.primary
+                                }
+                            )
+                            .clickable {
+                                if (game.state == GameState.MOVE1 || game.state == GameState.MOVE2) {
+                                    clickCount++
+                                }
+                                boardRedrawCount++
+                                game.clicked(card)
+                            }
+                    ) {
+                        Text(
+                            text = when {
+                                card.isFaceUp || game.debug -> card.emoji
+                                game.state == GameState.START -> card.emoji
+                                else -> ""
+                            },
+                            // I just need to use boardRedrawCount "somehow" to force a redraw
+                            // The following use is a no-op
+                            fontSize = ((boardRedrawCount * 0) + fontSize).sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = (fontSize * 0.8).dp)
+                        )
+                    }
                 }
             }
+            Text(
+                // https://foso.github.io/Jetpack-Compose-Playground/foundation/text/
+                text = if (game.state == GameState.END) "Parabéns!" else "",
+                fontFamily = FontFamily.Cursive,
+                fontWeight = FontWeight.Bold,
+                fontSize = ((boardRedrawCount * 0) + 77).sp,
+            )
         }
     }
 }
-
-//            Card(
-//                modifier = Modifier
-//                    .padding(4.dp),
-//                colors = cardColors(
-//                    containerColor = Color(
-//                        red = Random.nextInt(0, 255),
-//                        green = Random.nextInt(0, 255),
-//                        blue = Random.nextInt(0, 255)
-//                    ),
-//                )
 
 //fun getRandomColor() = Color(
 //    red = Random.nextInt(0, 255),
 //    green = Random.nextInt(0, 255),
 //    blue = Random.nextInt(0, 255)
 //)
-
-//enum class CardState {
-//    FACE_DOWN, FACE_UP, MATCHED
-//}
-
 
 //-----------------------------------------------------------------------
 // Emulate Android utils in Kotlin Playground
@@ -220,16 +234,26 @@ class GameEngine(
     val colors: List<Color>,
     val shuffle: Boolean = true,
     val verbose: Boolean = false,
-    val debug: Boolean = true,
+    val debug: Boolean = false,
 ) {
-    val slots = (emojis.indices + emojis.indices).let { if (shuffle) it.shuffled() else it }
-    val board = slots.indices.map {
-        GameCard(emoji = emojis[slots[it]], color = colors[slots[it]])
+    lateinit var slots: List<Int>
+    lateinit var board: List<GameCard>
+    lateinit var state: GameState
+
+    init {
+        resetBoard()
     }
-    var state = GameState.MOVE1
 
     override fun toString(): String {
         return board.indices.map { "$it${board[it]}" }.joinToString(separator = " ")
+    }
+
+    fun resetBoard() {
+        slots = (emojis.indices + emojis.indices).let { if (shuffle) it.shuffled() else it }
+        board = slots.indices.map {
+            GameCard(emoji = emojis[slots[it]], color = colors[slots[it]])
+        }
+        state = GameState.START
     }
 
     fun nextState() {
