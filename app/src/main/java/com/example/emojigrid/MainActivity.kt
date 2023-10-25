@@ -7,24 +7,32 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -75,22 +83,49 @@ fun GameBoard(game: GameEngine) {
     Scaffold(
         topBar = {
             TopAppBar(
-//                colors = TopAppBarDefaults.topAppBarColors(
-//                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-//                    titleContentColor = MaterialTheme.colorScheme.primary,
-//                ),
+                colors = TopAppBarDefaults.smallTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.primary,
+                ),
                 title = {
                     Text("Clicks: $boardRedrawCount")
                 }
 
             )
         },
-    ) {
+        bottomBar = {
+            BottomAppBar(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.primary,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Button(onClick = { boardRedrawCount++ }, modifier = Modifier.width(150.dp)) {
+                        Text(
+                            text = "Misturar",
+                            textAlign = TextAlign.Center,
+                            fontSize = 22.sp,
+                        )
+                    }
+                    Button(onClick = { boardRedrawCount++ }, modifier = Modifier.width(150.dp)) {
+                        Text(
+                            text = "Começar",
+                            textAlign = TextAlign.Center,
+                            fontSize = 22.sp,
+                        )
+                    }
+                }
+            }
+        },
+    ) { innerPadding ->
 
         // https://alexzh.com/jetpack-compose-building-grids/
         LazyVerticalGrid(
             columns = GridCells.Fixed(count = 4),
-            contentPadding = it, //PaddingValues(8.dp),
+            contentPadding = innerPadding, //PaddingValues(8.dp),
         ) {
             items(game.board.size) {
                 val card = game.board[it]
@@ -109,7 +144,7 @@ fun GameBoard(game: GameEngine) {
                         )
                         .clickable {
                             game.clicked(card)
-                            boardRedrawCount += 1
+                            boardRedrawCount++
                         }
                 ) {
                     Text(
@@ -173,12 +208,12 @@ val colors = listOf(
     Color.LightGray,
     Color.Gray,
 )
-val game = GameEngine(emojis, colors, shuffle = true, verbose = true, debug = true)
+val game = GameEngine(emojis, colors, shuffle = true, verbose = true, debug = false)
 
 //-----------------------------------------------
 // Game engine
 
-enum class GameState { MOVE1, MOVE2, MOVE3, END }
+enum class GameState { START, MOVE1, MOVE2, MOVE3, END }
 
 class GameEngine(
     val emojis: List<String>,
@@ -199,6 +234,7 @@ class GameEngine(
 
     fun nextState() {
         state = when (state) {
+            GameState.START -> GameState.MOVE1
             GameState.MOVE1 -> GameState.MOVE2
             GameState.MOVE2 -> GameState.MOVE3
             GameState.MOVE3 -> GameState.MOVE1
